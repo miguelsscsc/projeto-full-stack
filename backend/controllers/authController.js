@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
+import { createStudent } from "../models/studentModel.js";
 import { createUser, findUserAuthByEmail } from "../models/userModel.js";
 import { AppError } from "../utils/AppError.js";
 
@@ -47,6 +48,14 @@ export const registerStudent = async (request, response) => {
     email,
     password: hashedPassword,
     role: "student",
+  });
+
+  await createStudent({
+    user_id: user.id,
+    class_id: null,
+    registration_number: `AUTO-${user.id}`,
+    birth_date: null,
+    guardian_name: null,
   });
 
   response.status(201).json(user);

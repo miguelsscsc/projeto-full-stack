@@ -29,6 +29,16 @@ export const findUserAuthByEmail = async (email) => {
   return rows[0] || null;
 };
 
+export const listStudentUsers = async () => {
+  const { rows } = await query(
+    `SELECT u.id, u.name, u.email
+     FROM users u
+     WHERE u.role = 'student'
+     ORDER BY u.name ASC`
+  );
+  return rows;
+};
+
 export const createUser = async ({ name, email, password, role }) => {
   const { rows } = await query(
     `INSERT INTO users (name, email, password, role)

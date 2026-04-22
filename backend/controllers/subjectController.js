@@ -7,6 +7,7 @@ import {
   listSubjectsByTeacher,
   updateSubject,
 } from "../models/subjectModel.js";
+import { findStudentByUserId } from "../models/studentModel.js";
 import { AppError } from "../utils/AppError.js";
 
 export const getSubjects = async (request, response) => {
@@ -15,7 +16,8 @@ export const getSubjects = async (request, response) => {
   }
 
   if (request.user.role === "student") {
-    return response.json(await listSubjectsByStudent(request.user.id));
+    const student = await findStudentByUserId(request.user.id);
+    return response.json(student ? await listSubjectsByStudent(student.id) : []);
   }
 
   return response.json(await listSubjects());

@@ -8,14 +8,26 @@ import { useAuth } from "../context/AuthContext";
 
 const initialForms = {
   users: { name: "", email: "", password: "", role: "student" },
+  students: {
+    user_id: "",
+    class_id: "",
+    registration_number: "",
+    birth_date: "",
+    guardian_name: "",
+  },
   classes: { name: "", school_year: "2026", shift: "", room: "" },
   subjects: { name: "", workload: "80", teacher_id: "", class_id: "" },
   enrollments: {
     student_id: "",
     subject_id: "",
     status: "active",
-    grade: "0",
     attendance: "0",
+  },
+  grades: {
+    enrollment_id: "",
+    title: "",
+    score: "0",
+    weight: "1",
   },
 };
 
@@ -23,9 +35,11 @@ export const DashboardPage = () => {
   const { user, logout } = useAuth();
   const [dashboard, setDashboard] = useState({ summary: {}, recentEnrollments: [] });
   const [users, setUsers] = useState([]);
+  const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
+  const [grades, setGrades] = useState([]);
   const [formValues, setFormValues] = useState(initialForms);
   const [editing, setEditing] = useState({});
   const [error, setError] = useState("");
@@ -37,20 +51,32 @@ export const DashboardPage = () => {
   const loadData = async () => {
     try {
       setError("");
-      const [dashboardData, classesData, subjectsData, enrollmentsData, usersData] =
-        await Promise.all([
-          api.get("/dashboard"),
-          api.get("/classes"),
-          api.get("/subjects"),
-          api.get("/enrollments"),
-          isAdmin ? api.get("/users") : Promise.resolve([]),
-        ]);
+
+      const [
+        dashboardData,
+        classesData,
+        subjectsData,
+        enrollmentsData,
+        gradesData,
+        usersData,
+        studentsData,
+      ] = await Promise.all([
+        api.get("/dashboard"),
+        api.get("/classes"),
+        api.get("/subjects"),
+        api.get("/enrollments"),
+        api.get("/grades"),
+        isAdmin ? api.get("/users") : Promise.resolve([]),
+        isAdmin || isTeacher ? api.get("/students") : Promise.resolve([]),
+      ]);
 
       setDashboard(dashboardData);
       setClasses(classesData);
       setSubjects(subjectsData);
       setEnrollments(enrollmentsData);
+      setGrades(gradesData);
       setUsers(usersData);
+      setStudents(studentsData);
     } catch (err) {
       setError(err.message);
     }
@@ -61,19 +87,31 @@ export const DashboardPage = () => {
   }, []);
 
   const teacherOptions = useMemo(
-    () => users.filter((item) => item.role === "teacher").map((item) => ({
-      value: String(item.id),
-      label: item.name,
-    })),
+    () =>
+      users
+        .filter((item) => item.role === "teacher")
+        .map((item) => ({ value: String(item.id), label: item.name })),
+    [users]
+  );
+
+  const studentUserOptions = useMemo(
+    () =>
+      users
+        .filter((item) => item.role === "student")
+        .map((item) => ({
+          value: String(item.id),
+          label: `${item.name} (${item.email})`,
+        })),
     [users]
   );
 
   const studentOptions = useMemo(
-    () => users.filter((item) => item.role === "student").map((item) => ({
-      value: String(item.id),
-      label: item.name,
-    })),
-    [users]
+    () =>
+      students.map((item) => ({
+        value: String(item.id),
+        label: `${item.name} - ${item.registration_number}`,
+      })),
+    [students]
   );
 
   const classOptions = useMemo(
@@ -94,6 +132,15 @@ export const DashboardPage = () => {
     [subjects]
   );
 
+  const enrollmentOptions = useMemo(
+    () =>
+      enrollments.map((item) => ({
+        value: String(item.id),
+        label: `${item.student_name} - ${item.subject_name}`,
+      })),
+    [enrollments]
+  );
+
   const handleFieldChange = (entity) => (event) => {
     const { name, value } = event.target;
     setFormValues((current) => ({
@@ -109,6 +156,7 @@ export const DashboardPage = () => {
 
   const handleSubmit = (entity, endpoint) => async (event) => {
     event.preventDefault();
+
     try {
       setError("");
       setInfo("");
@@ -151,10 +199,11 @@ export const DashboardPage = () => {
   };
 
   const summaryCards = [
-    { label: "Usuários", value: dashboard.summary.total_users ?? 0 },
+    { label: "Usuarios", value: dashboard.summary.total_users ?? 0 },
+    { label: "Alunos", value: dashboard.summary.total_students ?? 0 },
     { label: "Turmas", value: dashboard.summary.total_classes ?? 0 },
-    { label: "Disciplinas", value: dashboard.summary.total_subjects ?? 0 },
-    { label: "Matrículas", value: dashboard.summary.total_enrollments ?? 0 },
+    { label: "Matriculas", value: dashboard.summary.total_enrollments ?? 0 },
+    { label: "Notas", value: dashboard.summary.total_grades ?? 0 },
   ];
 
   return (
@@ -179,10 +228,7 @@ export const DashboardPage = () => {
       {error ? <p className="feedback feedback--error">{error}</p> : null}
       {info ? <p className="feedback feedback--success">{info}</p> : null}
 
-      <SectionCard
-        title="Visão geral"
-        subtitle="Resumo das movimentações recentes por perfil de acesso."
-      >
+      <SectionCard title="Visao geral" subtitle="Resumo recente das matriculas do perfil logado.">
         <DataTable
           columns={[
             {
@@ -191,8 +237,7 @@ export const DashboardPage = () => {
               render: (value) => value || user.name,
             },
             { key: "subject_name", label: "Disciplina" },
-            { key: "grade", label: "Nota" },
-            { key: "attendance", label: "Frequência" },
+            { key: "attendance", label: "Frequencia" },
             { key: "status", label: "Status" },
           ]}
           rows={dashboard.recentEnrollments}
@@ -201,7 +246,7 @@ export const DashboardPage = () => {
       </SectionCard>
 
       {isAdmin ? (
-        <SectionCard title="Usuários" subtitle="Cadastre administradores, professores e alunos.">
+        <SectionCard title="Usuarios" subtitle="CRUD completo dos perfis de acesso.">
           <EntityForm
             fields={[
               { name: "name", label: "Nome", required: true },
@@ -222,7 +267,7 @@ export const DashboardPage = () => {
             values={formValues.users}
             onChange={handleFieldChange("users")}
             onSubmit={handleSubmit("users", "users")}
-            submitLabel={editing.users ? "Salvar usuário" : "Criar usuário"}
+            submitLabel={editing.users ? "Salvar usuario" : "Criar usuario"}
             onCancel={editing.users ? () => resetEntity("users") : undefined}
           />
           <DataTable
@@ -232,7 +277,7 @@ export const DashboardPage = () => {
               { key: "role", label: "Perfil" },
             ]}
             rows={users}
-            emptyMessage="Nenhum usuário cadastrado."
+            emptyMessage="Nenhum usuario cadastrado."
             actions={(row) => (
               <div className="table-actions">
                 <button
@@ -254,7 +299,71 @@ export const DashboardPage = () => {
       ) : null}
 
       {isAdmin ? (
-        <SectionCard title="Turmas" subtitle="Organize as turmas e sua estrutura anual.">
+        <SectionCard title="Alunos" subtitle="CRUD completo da entidade students.">
+          <EntityForm
+            fields={[
+              {
+                name: "user_id",
+                label: "Usuario aluno",
+                type: "select",
+                required: true,
+                options: studentUserOptions,
+              },
+              {
+                name: "class_id",
+                label: "Turma",
+                type: "select",
+                options: classOptions,
+              },
+              { name: "registration_number", label: "Matricula", required: true },
+              { name: "birth_date", label: "Nascimento", type: "date" },
+              { name: "guardian_name", label: "Responsavel" },
+            ]}
+            values={formValues.students}
+            onChange={handleFieldChange("students")}
+            onSubmit={handleSubmit("students", "students")}
+            submitLabel={editing.students ? "Salvar aluno" : "Criar aluno"}
+            onCancel={editing.students ? () => resetEntity("students") : undefined}
+          />
+          <DataTable
+            columns={[
+              { key: "name", label: "Aluno" },
+              { key: "registration_number", label: "Matricula" },
+              { key: "class_name", label: "Turma" },
+              { key: "guardian_name", label: "Responsavel" },
+            ]}
+            rows={students}
+            emptyMessage="Nenhum aluno cadastrado."
+            actions={(row) => (
+              <div className="table-actions">
+                <button
+                  className="button button--small"
+                  onClick={() =>
+                    startEdit("students", row, (item) => ({
+                      user_id: String(item.user_id),
+                      class_id: item.class_id ? String(item.class_id) : "",
+                      registration_number: item.registration_number,
+                      birth_date: item.birth_date ? String(item.birth_date).slice(0, 10) : "",
+                      guardian_name: item.guardian_name || "",
+                    }))
+                  }
+                >
+                  Editar
+                </button>
+                <button
+                  className="button button--small button--danger"
+                  onClick={() => handleDelete("students", row.id)}
+                >
+                  Excluir
+                </button>
+              </div>
+            )}
+          />
+        </SectionCard>
+      ) : null}
+
+      {isAdmin ? (
+        <SectionCard title="Turmas" subtitle="CRUD completo da entidade classes.">
           <EntityForm
             fields={[
               { name: "name", label: "Nome", required: true },
@@ -295,15 +404,12 @@ export const DashboardPage = () => {
         </SectionCard>
       ) : null}
 
-      <SectionCard
-        title="Disciplinas"
-        subtitle="Disciplinas relacionadas a professores e turmas."
-      >
+      <SectionCard title="Disciplinas" subtitle="Entidade auxiliar para organizar as inscricoes.">
         {isAdmin ? (
           <EntityForm
             fields={[
               { name: "name", label: "Nome", required: true },
-              { name: "workload", label: "Carga horária", type: "number", required: true },
+              { name: "workload", label: "Carga horaria", type: "number", required: true },
               {
                 name: "teacher_id",
                 label: "Professor",
@@ -331,7 +437,7 @@ export const DashboardPage = () => {
             { key: "name", label: "Disciplina" },
             { key: "teacher_name", label: "Professor" },
             { key: "class_name", label: "Turma" },
-            { key: "workload", label: "Carga horária" },
+            { key: "workload", label: "Carga horaria" },
           ]}
           rows={subjects}
           emptyMessage="Nenhuma disciplina encontrada."
@@ -366,11 +472,11 @@ export const DashboardPage = () => {
       </SectionCard>
 
       <SectionCard
-        title="Matrículas"
+        title="Matriculas"
         subtitle={
           isTeacher
-            ? "Como professor, você pode atualizar nota, frequência e status."
-            : "Relacionamento entre aluno e disciplina com status acadêmico."
+            ? "Professores podem atualizar status e frequencia."
+            : "CRUD completo da entidade enrollments."
         }
       >
         {isAdmin || editing.enrollments ? (
@@ -401,14 +507,13 @@ export const DashboardPage = () => {
                 required: true,
                 options: [
                   { value: "active", label: "Ativa" },
-                  { value: "completed", label: "Concluída" },
+                  { value: "completed", label: "Concluida" },
                   { value: "locked", label: "Bloqueada" },
                 ],
               },
-              { name: "grade", label: "Nota", type: "number", required: true, step: "0.1" },
               {
                 name: "attendance",
-                label: "Frequência",
+                label: "Frequencia",
                 type: "number",
                 required: true,
                 step: "0.1",
@@ -417,25 +522,21 @@ export const DashboardPage = () => {
             values={formValues.enrollments}
             onChange={handleFieldChange("enrollments")}
             onSubmit={handleSubmit("enrollments", "enrollments")}
-            submitLabel={
-              editing.enrollments
-                ? "Salvar matrícula"
-                : "Criar matrícula"
-            }
+            submitLabel={editing.enrollments ? "Salvar matricula" : "Criar matricula"}
             onCancel={editing.enrollments ? () => resetEntity("enrollments") : undefined}
           />
         ) : null}
         <DataTable
           columns={[
             { key: "student_name", label: "Aluno" },
+            { key: "registration_number", label: "Matricula" },
             { key: "subject_name", label: "Disciplina" },
             { key: "class_name", label: "Turma" },
-            { key: "grade", label: "Nota" },
-            { key: "attendance", label: "Frequência" },
+            { key: "attendance", label: "Frequencia" },
             { key: "status", label: "Status" },
           ]}
           rows={enrollments}
-          emptyMessage="Nenhuma matrícula encontrada."
+          emptyMessage="Nenhuma matricula encontrada."
           actions={
             isAdmin || isTeacher
               ? (row) => (
@@ -447,7 +548,6 @@ export const DashboardPage = () => {
                           student_id: String(item.student_id),
                           subject_id: String(item.subject_id),
                           status: item.status,
-                          grade: String(item.grade),
                           attendance: String(item.attendance),
                         }))
                       }
@@ -462,6 +562,68 @@ export const DashboardPage = () => {
                         Excluir
                       </button>
                     ) : null}
+                  </div>
+                )
+              : undefined
+          }
+        />
+      </SectionCard>
+
+      <SectionCard title="Notas" subtitle="CRUD completo da entidade grades.">
+        {isAdmin || isTeacher ? (
+          <EntityForm
+            fields={[
+              {
+                name: "enrollment_id",
+                label: "Matricula",
+                type: "select",
+                required: true,
+                options: enrollmentOptions,
+              },
+              { name: "title", label: "Avaliacao", required: true },
+              { name: "score", label: "Nota", type: "number", required: true, step: "0.1" },
+              { name: "weight", label: "Peso", type: "number", required: true, step: "0.1" },
+            ]}
+            values={formValues.grades}
+            onChange={handleFieldChange("grades")}
+            onSubmit={handleSubmit("grades", "grades")}
+            submitLabel={editing.grades ? "Salvar nota" : "Criar nota"}
+            onCancel={editing.grades ? () => resetEntity("grades") : undefined}
+          />
+        ) : null}
+        <DataTable
+          columns={[
+            { key: "student_name", label: "Aluno" },
+            { key: "subject_name", label: "Disciplina" },
+            { key: "title", label: "Avaliacao" },
+            { key: "score", label: "Nota" },
+            { key: "weight", label: "Peso" },
+          ]}
+          rows={grades}
+          emptyMessage="Nenhuma nota encontrada."
+          actions={
+            isAdmin || isTeacher
+              ? (row) => (
+                  <div className="table-actions">
+                    <button
+                      className="button button--small"
+                      onClick={() =>
+                        startEdit("grades", row, (item) => ({
+                          enrollment_id: String(item.enrollment_id),
+                          title: item.title,
+                          score: String(item.score),
+                          weight: String(item.weight),
+                        }))
+                      }
+                    >
+                      Editar
+                    </button>
+                    <button
+                      className="button button--small button--danger"
+                      onClick={() => handleDelete("grades", row.id)}
+                    >
+                      Excluir
+                    </button>
                   </div>
                 )
               : undefined

@@ -15,13 +15,11 @@ const adminEnrollmentRules = [
   { field: "student_id", required: true, type: "number" },
   { field: "subject_id", required: true, type: "number" },
   { field: "status", required: true, enum: ["active", "completed", "locked"] },
-  { field: "grade", required: true, type: "number" },
   { field: "attendance", required: true, type: "number" },
 ];
 
 const teacherEnrollmentRules = [
   { field: "status", required: true, enum: ["active", "completed", "locked"] },
-  { field: "grade", required: true, type: "number" },
   { field: "attendance", required: true, type: "number" },
 ];
 
