@@ -12,6 +12,41 @@ export const listClasses = async () => {
   return rows;
 };
 
+export const listClassesByTeacher = async (teacherId) => {
+  const { rows } = await query(
+    `SELECT c.*,
+      COUNT(DISTINCT s.id)::int AS subjects_count
+     FROM classes c
+     JOIN subjects s ON s.class_id = c.id
+     WHERE s.teacher_id = $1
+     GROUP BY c.id
+     ORDER BY c.school_year DESC, c.name ASC`,
+    [teacherId]
+  );
+  return rows;
+};
+
+export const listClassesByStudentUser = async (userId) => {
+  const { rows } = await query(
+    `SELECT c.*,
+      COUNT(DISTINCT subj.id)::int AS subjects_count
+     FROM classes c
+     LEFT JOIN subjects subj ON subj.class_id = c.id
+     JOIN students student ON student.user_id = $1
+     WHERE c.id = student.class_id
+        OR c.id IN (
+          SELECT subject.class_id
+          FROM enrollments e
+          JOIN subjects subject ON subject.id = e.subject_id
+          WHERE e.student_id = student.id
+        )
+     GROUP BY c.id
+     ORDER BY c.school_year DESC, c.name ASC`,
+    [userId]
+  );
+  return rows;
+};
+
 export const findClassById = async (id) => {
   const { rows } = await query("SELECT * FROM classes WHERE id = $1", [id]);
   return rows[0] || null;

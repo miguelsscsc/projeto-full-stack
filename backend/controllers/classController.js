@@ -3,13 +3,22 @@ import {
   deleteClass,
   findClassById,
   listClasses,
+  listClassesByStudentUser,
+  listClassesByTeacher,
   updateClass,
 } from "../models/classModel.js";
 import { AppError } from "../utils/AppError.js";
 
-export const getClasses = async (_request, response) => {
-  const classes = await listClasses();
-  response.json(classes);
+export const getClasses = async (request, response) => {
+  if (request.user.role === "teacher") {
+    return response.json(await listClassesByTeacher(request.user.id));
+  }
+
+  if (request.user.role === "student") {
+    return response.json(await listClassesByStudentUser(request.user.id));
+  }
+
+  return response.json(await listClasses());
 };
 
 export const createClassController = async (request, response) => {

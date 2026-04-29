@@ -298,17 +298,24 @@ export const DashboardPage = () => {
         </SectionCard>
       ) : null}
 
-      {isAdmin ? (
+      {isAdmin || isTeacher ? (
         <SectionCard title="Alunos" subtitle="CRUD completo da entidade students.">
           <EntityForm
             fields={[
-              {
-                name: "user_id",
-                label: "Usuario aluno",
-                type: "select",
-                required: true,
-                options: studentUserOptions,
-              },
+              isAdmin
+                ? {
+                    name: "user_id",
+                    label: "Usuario aluno",
+                    type: "select",
+                    required: true,
+                    options: studentUserOptions,
+                  }
+                : {
+                    name: "user_id",
+                    label: "ID do usuario aluno",
+                    type: "number",
+                    required: true,
+                  },
               {
                 name: "class_id",
                 label: "Turma",
@@ -362,8 +369,11 @@ export const DashboardPage = () => {
         </SectionCard>
       ) : null}
 
-      {isAdmin ? (
-        <SectionCard title="Turmas" subtitle="CRUD completo da entidade classes.">
+      <SectionCard
+        title="Turmas"
+        subtitle={isAdmin ? "CRUD completo da entidade classes." : "Turmas disponiveis para o seu perfil."}
+      >
+        {isAdmin ? (
           <EntityForm
             fields={[
               { name: "name", label: "Nome", required: true },
@@ -377,32 +387,36 @@ export const DashboardPage = () => {
             submitLabel={editing.classes ? "Salvar turma" : "Criar turma"}
             onCancel={editing.classes ? () => resetEntity("classes") : undefined}
           />
-          <DataTable
-            columns={[
-              { key: "name", label: "Turma" },
-              { key: "school_year", label: "Ano" },
-              { key: "shift", label: "Turno" },
-              { key: "room", label: "Sala" },
-              { key: "subjects_count", label: "Disciplinas" },
-            ]}
-            rows={classes}
-            emptyMessage="Nenhuma turma cadastrada."
-            actions={(row) => (
-              <div className="table-actions">
-                <button className="button button--small" onClick={() => startEdit("classes", row)}>
-                  Editar
-                </button>
-                <button
-                  className="button button--small button--danger"
-                  onClick={() => handleDelete("classes", row.id)}
-                >
-                  Excluir
-                </button>
-              </div>
-            )}
-          />
-        </SectionCard>
-      ) : null}
+        ) : null}
+        <DataTable
+          columns={[
+            { key: "name", label: "Turma" },
+            { key: "school_year", label: "Ano" },
+            { key: "shift", label: "Turno" },
+            { key: "room", label: "Sala" },
+            { key: "subjects_count", label: "Disciplinas" },
+          ]}
+          rows={classes}
+          emptyMessage="Nenhuma turma cadastrada."
+          actions={
+            isAdmin
+              ? (row) => (
+                  <div className="table-actions">
+                    <button className="button button--small" onClick={() => startEdit("classes", row)}>
+                      Editar
+                    </button>
+                    <button
+                      className="button button--small button--danger"
+                      onClick={() => handleDelete("classes", row.id)}
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                )
+              : undefined
+          }
+        />
+      </SectionCard>
 
       <SectionCard title="Disciplinas" subtitle="Entidade auxiliar para organizar as inscricoes.">
         {isAdmin ? (

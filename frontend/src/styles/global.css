@@ -254,6 +254,26 @@ select {
   color: var(--muted);
 }
 
+.data-table {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.table-filter {
+  display: grid;
+  gap: 0.45rem;
+  max-width: 24rem;
+  color: var(--muted);
+}
+
+.table-filter input {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid var(--stroke);
+  background: var(--bg-strong);
+  padding: 0.85rem 1rem;
+}
+
 .table-wrapper {
   overflow-x: auto;
 }

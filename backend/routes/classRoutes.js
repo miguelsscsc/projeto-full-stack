@@ -18,7 +18,7 @@ const classRules = [
   { field: "room", required: true },
 ];
 
-router.get("/", asyncHandler(getClasses));
+router.get("/", authorizeRoles("admin", "teacher", "student"), asyncHandler(getClasses));
 router.post("/", authorizeRoles("admin"), validate(classRules), asyncHandler(createClassController));
 router.put(
   "/:id",

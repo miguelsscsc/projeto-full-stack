@@ -17,13 +17,18 @@ const studentRules = [
 ];
 
 router.get("/", authorizeRoles("admin", "teacher"), asyncHandler(getStudents));
-router.post("/", authorizeRoles("admin"), validate(studentRules), asyncHandler(createStudentController));
+router.post(
+  "/",
+  authorizeRoles("admin", "teacher"),
+  validate(studentRules),
+  asyncHandler(createStudentController)
+);
 router.put(
   "/:id",
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "teacher"),
   validate(studentRules),
   asyncHandler(updateStudentController)
 );
-router.delete("/:id", authorizeRoles("admin"), asyncHandler(deleteStudentController));
+router.delete("/:id", authorizeRoles("admin", "teacher"), asyncHandler(deleteStudentController));
 
 export default router;
