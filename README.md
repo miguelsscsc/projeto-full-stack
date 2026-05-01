@@ -34,12 +34,16 @@ Aplicação completa com:
    - `npm install --prefix backend`
    - `npm install --prefix frontend`
 2. Crie um banco PostgreSQL e copie `backend/.env.example` para `backend/.env`.
+   - Senha configurada no projeto: `senai`
 3. Inicialize as tabelas e seed:
    - `npm --prefix backend run db:init`
 4. Rode a API:
    - `npm run dev:backend`
 5. Em outro terminal, rode o front:
    - `npm run dev:frontend`
+
+Ao iniciar a API, o backend também confere a conexão com o PostgreSQL e cria as
+tabelas/contas iniciais automaticamente caso o banco esteja vazio.
 
 ## Funcionalidades
 
