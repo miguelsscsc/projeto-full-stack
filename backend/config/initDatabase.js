@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import { pathToFileURL } from "url";
 import { pool, query } from "./database.js";
 
 const schema = `
@@ -130,14 +131,20 @@ export const initializeDatabase = async () => {
   await seed();
 };
 
-initializeDatabase()
-  .then(() => {
-    console.log("Banco PostgreSQL inicializado com sucesso.");
-  })
-  .catch((error) => {
-    console.error("Falha ao inicializar banco:", error.message);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await pool.end();
-  });
+const isCliExecution = process.argv[1]
+  ? import.meta.url === pathToFileURL(process.argv[1]).href
+  : false;
+
+if (isCliExecution) {
+  initializeDatabase()
+    .then(() => {
+      console.log("Banco PostgreSQL inicializado com sucesso.");
+    })
+    .catch((error) => {
+      console.error("Falha ao inicializar banco:", error.message || error.code || error.name);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await pool.end();
+    });
+}
