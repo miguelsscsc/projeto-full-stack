@@ -199,6 +199,29 @@ select {
   gap: 1rem;
 }
 
+.page-nav {
+  display: flex;
+  gap: 0.65rem;
+  overflow-x: auto;
+  padding: 0.25rem 0 0.5rem;
+}
+
+.page-nav__item {
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+  white-space: nowrap;
+}
+
+.page-nav__item--active {
+  background: var(--primary);
+  color: white;
+  border-color: transparent;
+}
+
 .role-badge {
   display: inline-flex;
   margin-top: 0.5rem;
