@@ -11,6 +11,6 @@ export const env = {
     port: Number(process.env.DB_PORT) || 5432,
     database: process.env.DB_NAME || "school_system",
     user: process.env.DB_USER || "postgres",
-    password: process.env.DB_PASSWORD || "postgres",
+    password: process.env.DB_PASSWORD || "senai",
   },
 };
