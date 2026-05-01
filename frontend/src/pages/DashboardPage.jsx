@@ -33,6 +33,7 @@ const initialForms = {
 
 export const DashboardPage = () => {
   const { user, logout } = useAuth();
+  const [activePage, setActivePage] = useState("overview");
   const [dashboard, setDashboard] = useState({ summary: {}, recentEnrollments: [] });
   const [users, setUsers] = useState([]);
   const [students, setStudents] = useState([]);
@@ -47,6 +48,20 @@ export const DashboardPage = () => {
 
   const isAdmin = user.role === "admin";
   const isTeacher = user.role === "teacher";
+
+  const pages = useMemo(
+    () =>
+      [
+        { id: "overview", label: "Painel", roles: ["admin", "teacher", "student"] },
+        { id: "users", label: "Usuarios", roles: ["admin"] },
+        { id: "students", label: "Alunos", roles: ["admin", "teacher"] },
+        { id: "classes", label: "Turmas", roles: ["admin", "teacher", "student"] },
+        { id: "subjects", label: "Disciplinas", roles: ["admin", "teacher", "student"] },
+        { id: "enrollments", label: "Matriculas", roles: ["admin", "teacher", "student"] },
+        { id: "grades", label: "Notas", roles: ["admin", "teacher", "student"] },
+      ].filter((page) => page.roles.includes(user.role)),
+    [user.role]
+  );
 
   const loadData = async () => {
     try {
@@ -85,6 +100,23 @@ export const DashboardPage = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    const syncPageWithHash = () => {
+      const pageFromHash = window.location.hash.replace("#/", "") || "overview";
+      const canAccessPage = pages.some((page) => page.id === pageFromHash);
+      setActivePage(canAccessPage ? pageFromHash : "overview");
+    };
+
+    syncPageWithHash();
+    window.addEventListener("hashchange", syncPageWithHash);
+    return () => window.removeEventListener("hashchange", syncPageWithHash);
+  }, [pages]);
+
+  const navigateTo = (pageId) => {
+    window.location.hash = `/${pageId}`;
+    setActivePage(pageId);
+  };
 
   const teacherOptions = useMemo(
     () =>
@@ -219,33 +251,50 @@ export const DashboardPage = () => {
         </button>
       </header>
 
-      <section className="stats-grid">
-        {summaryCards.map((item) => (
-          <StatCard key={item.label} {...item} />
+      <nav className="page-nav" aria-label="Paginas do sistema">
+        {pages.map((page) => (
+          <button
+            key={page.id}
+            type="button"
+            className={`page-nav__item ${activePage === page.id ? "page-nav__item--active" : ""}`}
+            onClick={() => navigateTo(page.id)}
+          >
+            {page.label}
+          </button>
         ))}
-      </section>
+      </nav>
 
       {error ? <p className="feedback feedback--error">{error}</p> : null}
       {info ? <p className="feedback feedback--success">{info}</p> : null}
 
-      <SectionCard title="Visao geral" subtitle="Resumo recente das matriculas do perfil logado.">
-        <DataTable
-          columns={[
-            {
-              key: "student_name",
-              label: "Aluno",
-              render: (value) => value || user.name,
-            },
-            { key: "subject_name", label: "Disciplina" },
-            { key: "attendance", label: "Frequencia" },
-            { key: "status", label: "Status" },
-          ]}
-          rows={dashboard.recentEnrollments}
-          emptyMessage="Nenhum dado encontrado."
-        />
-      </SectionCard>
+      {activePage === "overview" ? (
+        <>
+          <section className="stats-grid">
+            {summaryCards.map((item) => (
+              <StatCard key={item.label} {...item} />
+            ))}
+          </section>
 
-      {isAdmin ? (
+          <SectionCard title="Visao geral" subtitle="Resumo recente das matriculas do perfil logado.">
+            <DataTable
+              columns={[
+                {
+                  key: "student_name",
+                  label: "Aluno",
+                  render: (value) => value || user.name,
+                },
+                { key: "subject_name", label: "Disciplina" },
+                { key: "attendance", label: "Frequencia" },
+                { key: "status", label: "Status" },
+              ]}
+              rows={dashboard.recentEnrollments}
+              emptyMessage="Nenhum dado encontrado."
+            />
+          </SectionCard>
+        </>
+      ) : null}
+
+      {isAdmin && activePage === "users" ? (
         <SectionCard title="Usuarios" subtitle="CRUD completo dos perfis de acesso.">
           <EntityForm
             fields={[
@@ -298,7 +347,7 @@ export const DashboardPage = () => {
         </SectionCard>
       ) : null}
 
-      {isAdmin || isTeacher ? (
+      {(isAdmin || isTeacher) && activePage === "students" ? (
         <SectionCard title="Alunos" subtitle="CRUD completo da entidade students.">
           <EntityForm
             fields={[
@@ -369,55 +418,58 @@ export const DashboardPage = () => {
         </SectionCard>
       ) : null}
 
-      <SectionCard
-        title="Turmas"
-        subtitle={isAdmin ? "CRUD completo da entidade classes." : "Turmas disponiveis para o seu perfil."}
-      >
-        {isAdmin ? (
-          <EntityForm
-            fields={[
-              { name: "name", label: "Nome", required: true },
-              { name: "school_year", label: "Ano letivo", type: "number", required: true },
-              { name: "shift", label: "Turno", required: true },
-              { name: "room", label: "Sala", required: true },
+      {activePage === "classes" ? (
+        <SectionCard
+          title="Turmas"
+          subtitle={isAdmin ? "CRUD completo da entidade classes." : "Turmas disponiveis para o seu perfil."}
+        >
+          {isAdmin ? (
+            <EntityForm
+              fields={[
+                { name: "name", label: "Nome", required: true },
+                { name: "school_year", label: "Ano letivo", type: "number", required: true },
+                { name: "shift", label: "Turno", required: true },
+                { name: "room", label: "Sala", required: true },
+              ]}
+              values={formValues.classes}
+              onChange={handleFieldChange("classes")}
+              onSubmit={handleSubmit("classes", "classes")}
+              submitLabel={editing.classes ? "Salvar turma" : "Criar turma"}
+              onCancel={editing.classes ? () => resetEntity("classes") : undefined}
+            />
+          ) : null}
+          <DataTable
+            columns={[
+              { key: "name", label: "Turma" },
+              { key: "school_year", label: "Ano" },
+              { key: "shift", label: "Turno" },
+              { key: "room", label: "Sala" },
+              { key: "subjects_count", label: "Disciplinas" },
             ]}
-            values={formValues.classes}
-            onChange={handleFieldChange("classes")}
-            onSubmit={handleSubmit("classes", "classes")}
-            submitLabel={editing.classes ? "Salvar turma" : "Criar turma"}
-            onCancel={editing.classes ? () => resetEntity("classes") : undefined}
+            rows={classes}
+            emptyMessage="Nenhuma turma cadastrada."
+            actions={
+              isAdmin
+                ? (row) => (
+                    <div className="table-actions">
+                      <button className="button button--small" onClick={() => startEdit("classes", row)}>
+                        Editar
+                      </button>
+                      <button
+                        className="button button--small button--danger"
+                        onClick={() => handleDelete("classes", row.id)}
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  )
+                : undefined
+            }
           />
-        ) : null}
-        <DataTable
-          columns={[
-            { key: "name", label: "Turma" },
-            { key: "school_year", label: "Ano" },
-            { key: "shift", label: "Turno" },
-            { key: "room", label: "Sala" },
-            { key: "subjects_count", label: "Disciplinas" },
-          ]}
-          rows={classes}
-          emptyMessage="Nenhuma turma cadastrada."
-          actions={
-            isAdmin
-              ? (row) => (
-                  <div className="table-actions">
-                    <button className="button button--small" onClick={() => startEdit("classes", row)}>
-                      Editar
-                    </button>
-                    <button
-                      className="button button--small button--danger"
-                      onClick={() => handleDelete("classes", row.id)}
-                    >
-                      Excluir
-                    </button>
-                  </div>
-                )
-              : undefined
-          }
-        />
-      </SectionCard>
+        </SectionCard>
+      ) : null}
 
+      {activePage === "subjects" ? (
       <SectionCard title="Disciplinas" subtitle="Entidade auxiliar para organizar as inscricoes.">
         {isAdmin ? (
           <EntityForm
@@ -484,7 +536,9 @@ export const DashboardPage = () => {
           }
         />
       </SectionCard>
+      ) : null}
 
+      {activePage === "enrollments" ? (
       <SectionCard
         title="Matriculas"
         subtitle={
@@ -582,7 +636,9 @@ export const DashboardPage = () => {
           }
         />
       </SectionCard>
+      ) : null}
 
+      {activePage === "grades" ? (
       <SectionCard title="Notas" subtitle="CRUD completo da entidade grades.">
         {isAdmin || isTeacher ? (
           <EntityForm
@@ -644,6 +700,7 @@ export const DashboardPage = () => {
           }
         />
       </SectionCard>
+      ) : null}
     </main>
   );
 };
